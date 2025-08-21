@@ -18,7 +18,12 @@ using namespace std;
 
 
 string coordToString(pair<int, int> loc) {
-	return to_string(loc.first) + to_string(loc.second);
+	char c1 = 'a' + (loc.second); // Convert column index to file
+	char c2 = (loc.first + 1) + '0';
+	string s;
+	s.push_back(c1);
+	s.push_back(c2);
+	return s;
 }
 
 pair<char, int> parLoc(string loc) {
@@ -58,7 +63,10 @@ public:
 	Color color;
 	pair<char, int> location; // file, rank
 	vector<pair<int, int>> possibleMoves;
-	bool hasMoved = false; // Used for pawns to determine if they can move two squares forward
+	bool hasMoved = false; // pawns and castling rights
+	bool givingCheck = false; // whether the piece is giving check
+	bool isProtected = false; // whether the piece is protected by another piece
+	vector<pair<int, int>> pathForCheck;
 	Piece(PieceType t, Color c, char f, int r) {
 		type = t;
 		color = c;
@@ -68,14 +76,13 @@ public:
 	string toString();
 	string locString() { return string(1, location.first) + to_string(location.second); }
 	string toStringBoard();
-	virtual void pieceVision(vector<vector<Piece>> board) {}
+	virtual void pieceVision(vector<vector<Piece>> &board) {}
 	Piece& operator=(const Piece& other) {
 		type = other.type;
 		color = other.color;
 		hasMoved = true;
 		return *this;
 	}
-
 };
 
 string Piece::toString() {
@@ -125,90 +132,189 @@ class Pawn : public Piece {
 public:
 	bool promoted = false;
 	bool captured = false;
-	bool givingCheck = false;
 	
 	Pawn(Color c, char f, int r) : Piece(PAWN, c, f, r) {}
 	Pawn() : Piece(PAWN, NULL_COLOR, 'a', 1) {}
-	void pieceVision(vector<vector<Piece>> board);
+	void pieceVision(vector<vector<Piece>> &board, bool morv);
 };
 
-void Pawn::pieceVision(vector<vector<Piece>> board) {
+void Pawn::pieceVision(vector<vector<Piece>> &board, bool morv) {
 	pair<int, int> loc = rftcd(location);
+	int l1 = loc.first;
+	int l2 = loc.second;
 	if (color == WHITE)
 	{
-		if (board[loc.first + 1][loc.second].type == EMPTY)
+		if (morv == false)
 		{
-			possibleMoves.push_back(make_pair(loc.first + 1, loc.second));
+			if (l2 == 0)
+			{
+				if (board[l1 + 1][l2 + 1].color == WHITE)
+				{
+					board[l1 + 1][l2 + 1].isProtected = true;
+				}
+				if (board[l1 + 1][l2 + 1].color == BLACK && board[l1 + 1][l2 + 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
+				possibleMoves.push_back(make_pair(l1 + 1, l2 + 1));
+			}
+			if (l2 == 7)
+			{
+				if (board[l1 + 1][l2 - 1].color == WHITE)
+				{
+					board[l1 + 1][l2 - 1].isProtected = true;
+				}
+				if (board[l1 + 1][l2 - 1].color == BLACK && board[l1 + 1][l2 - 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
+				possibleMoves.push_back(make_pair(l1 + 1, l2 - 1));
+			}
+			if (l2 > 0 && l2 < 7)
+			{
+				if (board[l1 + 1][l2 + 1].color == WHITE)
+				{
+					board[l1 + 1][l2 + 1].isProtected = true;
+				}
+				if (board[l1 + 1][l2 + 1].color == BLACK && board[l1 + 1][l2 + 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
+				if (board[l1 + 1][l2 - 1].color == WHITE)
+				{
+					board[l1 + 1][l2 - 1].isProtected = true;
+				}
+				if (board[l1 + 1][l2 - 1].color == BLACK && board[l1 + 1][l2 - 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
+				possibleMoves.push_back(make_pair(l1 + 1, l2 + 1));
+				possibleMoves.push_back(make_pair(l1 + 1, l2 - 1));
+			}
+			return;
+		}
+		if (board[l1 + 1][l2].type == EMPTY)
+		{
+			possibleMoves.push_back(make_pair(l1 + 1, l2));
 			if (hasMoved == false)
 			{
-				if (board[loc.first + 2][loc.second].type == EMPTY)
+				if (board[l1 + 2][l2].type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first + 2, loc.second));
+					possibleMoves.push_back(make_pair(l1 + 2, l2));
 				}
 			}
 		}
-		if (loc.second == 0)
+		if (l2 == 0)
 		{
-			if (board[loc.first + 1][loc.second + 1].color == BLACK)
+			if (board[l1 + 1][l2 + 1].color == BLACK)
 			{
-				possibleMoves.push_back(make_pair(loc.first + 1, loc.second + 1));
+				possibleMoves.push_back(make_pair(l1 + 1, l2 + 1));
 			}
 		}
-		if (loc.second == 7)
+		if (l2 == 7)
 		{
-			if (board[loc.first + 1][loc.second - 1].color == BLACK)
+			if (board[l1 + 1][l2 - 1].color == BLACK)
 			{
-				possibleMoves.push_back(make_pair(loc.first + 1, loc.second - 1));
+				possibleMoves.push_back(make_pair(l1 + 1, l2 - 1));
 			}
 		}
-		if (loc.second > 0 && loc.second < 7)
+		if (l2 > 0 && l2 < 7)
 		{
-			if (board[loc.first + 1][loc.second + 1].color == BLACK)
+			if (board[l1 + 1][l2 + 1].color == BLACK)
 			{
-				possibleMoves.push_back(make_pair(loc.first + 1, loc.second + 1));
+				possibleMoves.push_back(make_pair(l1 + 1, l2 + 1));
 			}
-			if (board[loc.first + 1][loc.second - 1].color == BLACK)
+			if (board[l1 + 1][l2 - 1].color == BLACK)
 			{
-				possibleMoves.push_back(make_pair(loc.first + 1, loc.second - 1));
+				possibleMoves.push_back(make_pair(l1 + 1, l2 - 1));
 			}
 		}
 	}
 	if (color == BLACK)
 	{
-		if (board[loc.first - 1][loc.second].type == EMPTY)
+		if (morv == false)
 		{
-			possibleMoves.push_back(make_pair(loc.first - 1, loc.second));
+			if (l2 == 0)
+			{
+				if (board[l1 - 1][l2 + 1].color == BLACK)
+				{
+					board[l1 - 1][l2 + 1].isProtected = true;
+				}
+				if (board[l1 - 1][l2 + 1].color == WHITE && board[l1 - 1][l2 + 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
+				possibleMoves.push_back(make_pair(l1 - 1, l2 + 1));
+			}
+			if (l2 == 7)
+			{
+				if (board[l1 - 1][l2 - 1].color == BLACK)
+				{
+					board[l1 - 1][l2 - 1].isProtected = true;
+				}
+				if (board[l1 - 1][l2 - 1].color == WHITE && board[l1 - 1][l2 - 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
+				possibleMoves.push_back(make_pair(l1 - 1, l2 - 1));
+			}
+			if (l2 > 0 && l2 < 7)
+			{
+				if (board[l1 - 1][l2 + 1].color == BLACK)
+				{
+					board[l1 - 1][l2 + 1].isProtected = true;
+				}
+				if (board[l1 - 1][l2 + 1].color == WHITE && board[l1 - 1][l2 + 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
+				if (board[l1 - 1][l2 - 1].color == BLACK)
+				{
+					board[l1 - 1][l2 - 1].isProtected = true;
+				}
+				if (board[l1 - 1][l2 - 1].color == WHITE && board[l1 - 1][l2 - 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
+				possibleMoves.push_back(make_pair(l1 - 1, l2 + 1));
+				possibleMoves.push_back(make_pair(l1 - 1, l2 - 1));
+			}
+			return;
+		}
+		if (board[l1 - 1][l2].type == EMPTY)
+		{
+			possibleMoves.push_back(make_pair(l1 - 1, l2));
 			if (hasMoved == false)
 			{
-				if (board[loc.first - 2][loc.second].type == EMPTY)
+				if (board[l1 - 2][l2].type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first - 2, loc.second));
+					possibleMoves.push_back(make_pair(l1 - 2, l2));
 				}
 			}
 		}
-		if (loc.second == 0)
+		if (l2 == 0)
 		{
-			if (board[loc.first - 1][loc.second + 1].color == WHITE)
+			if (board[l1 - 1][l2 + 1].color == WHITE)
 			{
-				possibleMoves.push_back(make_pair(loc.first - 1, loc.second + 1));
+				possibleMoves.push_back(make_pair(l1 - 1, l2 + 1));
 			}
 		}
-		if (loc.second == 7)
+		if (l2 == 7)
 		{
-			if (board[loc.first - 1][loc.second - 1].color == WHITE)
+			if (board[l1 - 1][l2 - 1].color == WHITE)
 			{
-				possibleMoves.push_back(make_pair(loc.first - 1, loc.second - 1));
+				possibleMoves.push_back(make_pair(l1 - 1, l2 - 1));
 			}
 		}
-		if (loc.second > 0 && loc.second < 7)
+		if (l2 > 0 && l2 < 7)
 		{
-			if (board[loc.first - 1][loc.second + 1].color == WHITE)
+			if (board[l1 - 1][l2 + 1].color == WHITE)
 			{
-				possibleMoves.push_back(make_pair(loc.first - 1, loc.second + 1));
+				possibleMoves.push_back(make_pair(l1 - 1, l2 + 1));
 			}
-			if (board[loc.first - 1][loc.second - 1].color == WHITE)
+			if (board[l1 - 1][l2 - 1].color == WHITE)
 			{
-				possibleMoves.push_back(make_pair(loc.first - 1, loc.second - 1));
+				possibleMoves.push_back(make_pair(l1 - 1, l2 - 1));
 			}
 		}
 	}
@@ -218,120 +324,190 @@ void Pawn::pieceVision(vector<vector<Piece>> board) {
 class Bishop : public Piece {
 public:
 	bool captured = false;
-	bool givingCheck = false;
+	
 	
 	Bishop(Color c, char f, int r) : Piece(BISHOP, c, f, r) {}
 	Bishop() : Piece(BISHOP, NULL_COLOR, 'a', 1) {}
-	void pieceVision(vector<vector<Piece>> board);
+	void pieceVision(vector<vector<Piece>> &board, bool morv);
 };
 
-void Bishop::pieceVision(vector<vector<Piece>> board) {
+void Bishop::pieceVision(vector<vector<Piece>> &board, bool morv) {
 	pair<int, int> loc = rftcd(location);
+	int l1 = loc.first;
+	int l2 = loc.second;
 	int rotos = 0; // Rotations of the bishop
 	while (rotos < 4) {
 		switch (rotos) {
 		case 0:
 			//up-right
-			for (size_t i = 1; i < 8; i++)
+			for (int i = 1; i < 8; i++)
 			{
-				if (loc.first + i == 8 || loc.second + i == 8)
+				if (l1 + i == 8 || l2 + i == 8)
 				{
 					++rotos;
 					break;
 				}
-				Piece temp = board[loc.first + i][loc.second + i];
+				Piece temp = board[l1 + i][l2 + i];
 				if (temp.color == color)
 				{
+					if (morv == false)
+					{
+						board[l1 + i][l2 + i].isProtected = true;
+						possibleMoves.push_back(make_pair(l1 + i, l2 + i));
+					}
 					++rotos;
 					break;
 				}
 				if (temp.type != EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first + i, loc.second + i));
+					if (temp.type == KING)
+					{
+						board[l1][l2].givingCheck = true;
+						for (int j = 1; j < 8; j++)
+						{
+							if (board[l1 + j][l2 + j].type == KING)
+							{
+								break;
+							}
+							board[l1][l2].pathForCheck.push_back(make_pair(l1 + j, l2 + j));
+						}
+					}
+					possibleMoves.push_back(make_pair(l1 + i, l2 + i));
 					++rotos;
 					break;
 				}
 				if (temp.type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first + i, loc.second + i));
+					possibleMoves.push_back(make_pair(l1 + i, l2 + i));
 				}
 			}
 		case 1:
 			//down-right
-			for (size_t i = 1; i < 8; i++)
+			for (int i = 1; i < 8; i++)
 			{
-				if (loc.first - i + 1 == 0 || loc.second + i == 8)
+				if (l1 - i + 1 == 0 || l2 + i == 8)
 				{
 					++rotos;
 					break;
 				}
-				Piece temp = board[loc.first - i][loc.second + i];
+				Piece temp = board[l1 - i][l2 + i];
 				if (temp.color == color)
 				{
+					if (morv == false)
+					{
+						board[l1 - i][l2 + i].isProtected = true;
+						possibleMoves.push_back(make_pair(l1 - i, l2 + i));
+					}
 					++rotos;
 					break;
 				}
 				if (temp.type != EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first - i, loc.second + i));
+					if (temp.type == KING)
+					{
+						board[l1][l2].givingCheck = true;
+						for (int j = 1; j < 8; j++)
+						{
+							if (board[l1 - j][l2 + j].type == KING)
+							{
+								break;
+							}
+							board[l1][l2].pathForCheck.push_back(make_pair(l1 - j, l2 + j));
+						}
+					}
+					possibleMoves.push_back(make_pair(l1 - i, l2 + i));
 					++rotos;
 					break;
 				}
 				if (temp.type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first - i, loc.second + i));
+					possibleMoves.push_back(make_pair(l1 - i, l2 + i));
 				}
 			}
 		case 2:
 			//down-left
-			for (size_t i = 1; i < 8; i++)
+			for (int i = 1; i < 8; i++)
 			{
-				if (loc.first - i + 1 == 0 || loc.second - i + 1 == 0)
+				if (l1 - i + 1 == 0 || l2 - i + 1 == 0)
 				{
 					++rotos;
 					break;
 				}
-				Piece temp = board[loc.first - i][loc.second - i];
+				Piece temp = board[l1 - i][l2 - i];
 				if (temp.color == color)
 				{
+					if (morv == false)
+					{
+						board[l1 - i][l2 - i].isProtected = true;
+						possibleMoves.push_back(make_pair(l1 - i, l2 - i));
+					}
 					++rotos;
 					break;
 				}
 				if (temp.type != EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first - i, loc.second - i));
+					if (temp.type == KING)
+					{
+						board[l1][l2].givingCheck = true;
+						for (int j = 1; j < 8; j++)
+						{
+							if (board[l1 - j][l2 - j].type == KING)
+							{
+								break;
+							}
+							board[l1][l2].pathForCheck.push_back(make_pair(l1 - j, l2 - j));
+						}
+					}
+					possibleMoves.push_back(make_pair(l1 - i, l2 - i));
 					++rotos;
 					break;
 				}
 				if (temp.type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first - i, loc.second - i));
+					possibleMoves.push_back(make_pair(l1 - i, l2 - i));
 				}
 			}
 		case 3:
 			//up-left
-			for (size_t i = 1; i < 8; i++)
+			for (int i = 1; i < 8; i++)
 			{
-				if (loc.first + i == 8 || loc.second - i + 1 == 0)
+				if (l1 + i == 8 || l2 - i + 1 == 0)
 				{
 					++rotos;
 					break;
 				}
-				Piece temp = board[loc.first + i][loc.second - i];
+				Piece temp = board[l1 + i][l2 - i];
 				if (temp.color == color)
 				{
+					if (morv == false)
+					{
+						board[l1 + i][l2 - i].isProtected = true;
+						possibleMoves.push_back(make_pair(l1 + i, l2 - i));
+					}
 					++rotos;
 					break;
 				}
 				if (temp.type != EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first + i, loc.second - i));
+					if (temp.type == KING)
+					{
+						board[l1][l2].givingCheck = true;
+						for (int j = 1; j < 8; j++)
+						{
+							if (board[l1 + j][l2 - j].type == KING)
+							{
+								break;
+							}
+							board[l1][l2].pathForCheck.push_back(make_pair(l1 + j, l2 - j));
+						}
+					}
+					possibleMoves.push_back(make_pair(l1 + i, l2 - i));
 					++rotos;
 					break;
 				}
 				if (temp.type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first + i, loc.second - i));
+					possibleMoves.push_back(make_pair(l1 + i, l2 - i));
 				}
 			}
 			break;
@@ -343,95 +519,169 @@ void Bishop::pieceVision(vector<vector<Piece>> board) {
 class Knight : public Piece {
 public:
 	bool captured = false;
-	bool givingCheck = false;
+	
 	
 	Knight(Color c, string loc) : Piece(KNIGHT, c, loc[0], loc[1] - '0') {}
 	Knight() : Piece(KNIGHT, NULL_COLOR, 'a', 1) {}
-	void pieceVision(vector<vector<Piece>> board);
+	void pieceVision(vector<vector<Piece>> &board, bool morv);
 };
 
-void Knight::pieceVision(vector<vector<Piece>> board) {
+void Knight::pieceVision(vector<vector<Piece>> &board, bool morv) {
 	pair<int, int> loc = rftcd(location);
-	for (size_t i = 0; i < 8; i++)
+	int l1 = loc.first;
+	int l2 = loc.second;
+	for (int i = 0; i < 8; i++)
 	{
 		switch (i) {
 		case 0:
 			//NNE
-			if (loc.first <= 5 && loc.second <= 6)
+			if (l1 <= 5 && l2 <= 6)
 			{
-				if (board[loc.first + 2][loc.second + 1].color != color)
+				if (board[l1 + 2][l2 + 1].color != color || morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first + 2, loc.second + 1));
+					possibleMoves.push_back(make_pair(l1 + 2, l2 + 1));
+				}
+				if (board[l1 + 2][l2 + 1].color == color)
+				{
+					board[l1 + 2][l2 + 1].isProtected = true;
+					break;
+				}
+				if (board[l1 + 2][l2 + 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
 				}
 			}
 			break;
 		case 1:
 			//NEE
-			if (loc.first <= 6 && loc.second <= 5)
+			if (l1 <= 6 && l2 <= 5)
 			{
-				if (board[loc.first + 1][loc.second + 2].color != color)
+				if (board[l1 + 1][l2 + 2].color != color || morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first + 1, loc.second + 2));
+					possibleMoves.push_back(make_pair(l1 + 1, l2 + 2));
+				}
+				if (board[l1 + 1][l2 + 2].color == color)
+				{
+					board[l1 + 1][l2 + 2].isProtected = true;
+					break;
+				}
+				if (board[l1 + 1][l2 + 2].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
 				}
 			}
 			break;
 		case 2:
 			//SEE
-			if (loc.first >= 1 && loc.second <= 5)
+			if (l1 >= 1 && l2 <= 5)
 			{
-				if (board[loc.first - 1][loc.second + 2].color != color)
+				if (board[l1 - 1][l2 + 2].color != color || morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first - 1, loc.second + 2));
+					possibleMoves.push_back(make_pair(l1 - 1, l2 + 2));
+				}
+				if (board[l1 - 1][l2 + 2].color == color)
+				{
+					board[l1 - 1][l2 + 2].isProtected = true;
+					break;
+				}
+				if (board[l1 - 1][l2 + 2].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
 				}
 			}
 			break;
 		case 3:
 			//SSE
-			if (loc.first >= 2 && loc.second <= 6)
+			if (l1 >= 2 && l2 <= 6)
 			{
-				if (board[loc.first - 2][loc.second + 1].color != color)
+				if (board[l1 - 2][l2 + 1].color != color || morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first - 2, loc.second + 1));
+					possibleMoves.push_back(make_pair(l1 - 2, l2 + 1));
+				}
+				if (board[l1 - 2][l2 + 1].color == color)
+				{
+					board[l1 - 2][l2 + 1].isProtected = true;
+					break;
+				}
+				if (board[l1 - 2][l2 + 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
 				}
 			}
 			break;
 		case 4:
 			//SSW
-			if (loc.first >= 2 && loc.second >= 1)
+			if (l1 >= 2 && l2 >= 1)
 			{
-				if (board[loc.first - 2][loc.second - 1].color != color)
+				if (board[l1 - 2][l2 - 1].color != color || morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first - 2, loc.second - 1));
+					possibleMoves.push_back(make_pair(l1 - 2, l2 - 1));
+				}
+				if (board[l1 - 2][l2 - 1].color == color)
+				{
+					board[l1 - 2][l2 - 1].isProtected = true;
+					break;
+				}
+				if (board[l1 - 2][l2 - 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
 				}
 			}
 			break;
 		case 5:
 			//SWW
-			if (loc.first >= 1 && loc.second >= 2)
+			if (l1 >= 1 && l2 >= 2)
 			{
-				if (board[loc.first - 1][loc.second - 2].color != color)
+				if (board[l1 - 1][l2 - 2].color != color || morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first - 1, loc.second - 2));
+					possibleMoves.push_back(make_pair(l1 - 1, l2 - 2));
 				}	
+				if (board[l1 - 1][l2 - 2].color == color)
+				{
+					board[l1 - 1][l2 - 2].isProtected = true;
+					break;
+				}
+				if (board[l1 - 1][l2 - 2].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
+				}
 			}
 			break;
 		case 6:
 			//NWW
-			if (loc.first <= 6 && loc.second >= 2)
+			if (l1 <= 6 && l2 >= 2)
 			{
-				if (board[loc.first + 1][loc.second - 2].color != color)
+				if (board[l1 + 1][l2 - 2].color != color || morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first + 1, loc.second - 2));
+					possibleMoves.push_back(make_pair(l1 + 1, l2 - 2));
+				}
+				if (board[l1 + 1][l2 - 2].color == color)
+				{
+					board[l1 + 1][l2 - 2].isProtected = true;
+					break;
+				}
+				if (board[l1 + 1][l2 - 2].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
 				}
 			}
 			break;
 		case 7:
 			//NNW
-			if (loc.first <= 5 && loc.second >= 1)
+			if (l1 <= 5 && l2 >= 1)
 			{
-				if (board[loc.first + 2][loc.second - 1].color != color)
+				if (board[l1 + 2][l2 - 1].color != color || morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first + 2, loc.second - 1));
+					possibleMoves.push_back(make_pair(l1 + 2, l2 - 1));
+				}
+				if (board[l1 + 2][l2 - 1].color == color)
+				{
+					board[l1 + 2][l2 - 1].isProtected = true;
+					break;
+				}
+				if (board[l1 + 2][l2 - 1].type == KING)
+				{
+					board[l1][l2].givingCheck = true;
 				}
 			}
 			break;
@@ -443,120 +693,190 @@ void Knight::pieceVision(vector<vector<Piece>> board) {
 class Rook : public Piece {
 public:
 	bool captured = false;
-	bool givingCheck = false;
+	
 	
 	Rook(Color c, char f, int r) : Piece(ROOK, c, f, r) {}
 	Rook() : Piece(ROOK, NULL_COLOR, 'a', 1) {}
-	void pieceVision(vector<vector<Piece>> board);
+	void pieceVision(vector<vector<Piece>> &board, bool morv);
 };
 
-void Rook::pieceVision(vector<vector<Piece>>board) {
+void Rook::pieceVision(vector<vector<Piece>> &board, bool morv) {
 	pair<int, int> loc = rftcd(location);
+	int l1 = loc.first;
+	int l2 = loc.second;
 	int rotos = 0; // Rotations of the bishop
 	while (rotos < 4) {
 		switch (rotos) {
 		case 0:
 			//up
-			for (size_t i = 1; i < 8; i++)
+			for (int i = 1; i < 8; i++)
 			{
-				if (loc.first + i == 8)
+				if (l1 + i == 8)
 				{
 					++rotos;
 					break;
 				}
-				Piece temp = board[loc.first + i][loc.second];
+				Piece temp = board[l1 + i][l2];
 				if (temp.color == color)
 				{
+					if (morv == false)
+					{
+						board[l1 + i][l2].isProtected = true;
+						possibleMoves.push_back(make_pair(l1 + i, l2));
+					}
 					++rotos;
 					break;
 				}
 				if (temp.type != EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first + i, loc.second));
+					if (temp.type == KING)
+					{
+						board[l1][l2].givingCheck = true;
+						for (int j = 1; j < 8; j++)
+						{
+							if (board[l1 + j][l2].type == KING)
+							{
+								break;
+							}
+							board[l1][l2].pathForCheck.push_back(make_pair(l1 + j, l2));
+						}
+					}
+					possibleMoves.push_back(make_pair(l1 + i, l2));
 					++rotos;
 					break;
 				}
 				if (temp.type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first + i, loc.second));
+					possibleMoves.push_back(make_pair(l1 + i, l2));
 				}
 			}
 		case 1:
 			//right
-			for (size_t i = 1; i < 8; i++)
+			for (int i = 1; i < 8; i++)
 			{
-				if (loc.second + i == 8)
+				if (l2 + i == 8)
 				{
 					++rotos;
 					break;
 				}
-				Piece temp = board[loc.first][loc.second + i];
+				Piece temp = board[l1][l2 + i];
 				if (temp.color == color)
 				{
+					if (morv == false)
+					{
+						board[l1][l2 + i].isProtected = true;
+						possibleMoves.push_back(make_pair(l1, l2 + i));
+					}
 					++rotos;
 					break;
 				}
 				if (temp.type != EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first, loc.second + i));
+					if (temp.type == KING)
+					{
+						board[l1][l2].givingCheck = true;
+						for (int j = 1; j < 8; j++)
+						{
+							if (board[l1][l2 + j].type == KING)
+							{
+								break;
+							}
+							board[l1][l2].pathForCheck.push_back(make_pair(l1, l2 + j));
+						}
+					}
+					possibleMoves.push_back(make_pair(l1, l2 + i));
 					++rotos;
 					break;
 				}
 				if (temp.type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first, loc.second + i));
+					possibleMoves.push_back(make_pair(l1, l2 + i));
 				}
 			}
 		case 2:
 			//down
-			for (size_t i = 1; i < 8; i++)
+			for (int i = 1; i < 8; i++)
 			{
-				if (loc.first - i + 1 == 0)
+				if (l1 - i + 1 == 0)
 				{
 					++rotos;
 					break;
 				}
-				Piece temp = board[loc.first - i][loc.second];
+				Piece temp = board[l1 - i][l2];
 				if (temp.color == color)
 				{
+					if (morv == false)
+					{
+						board[l1 - i][l2].isProtected = true;
+						possibleMoves.push_back(make_pair(l1 - i, l2));
+					}
 					++rotos;
 					break;
 				}
 				if (temp.type != EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first - i, loc.second));
+					if (temp.type == KING)
+					{
+						board[l1][l2].givingCheck = true;
+						for (int j = 1; j < 8; j++)
+						{
+							if (board[l1 - j][l2].type == KING)
+							{
+								break;
+							}
+							board[l1][l2].pathForCheck.push_back(make_pair(l1 - j, l2));
+						}
+					}
+					possibleMoves.push_back(make_pair(l1 - i, l2));
 					++rotos;
 					break;
 				}
 				if (temp.type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first - i, loc.second));
+					possibleMoves.push_back(make_pair(l1 - i, l2));
 				}
 			}
 		case 3:
 			//left
-			for (size_t i = 1; i < 8; i++)
+			for (int i = 1; i < 8; i++)
 			{
-				if (loc.second - i + 1 == 0)
+				if (l2 - i + 1 == 0)
 				{
 					++rotos;
 					break;
 				}
-				Piece temp = board[loc.first][loc.second - i];
+				Piece temp = board[l1][l2 - i];
 				if (temp.color == color)
 				{
+					if (morv == false)
+					{
+						board[l1][l2 - i].isProtected = true;
+						possibleMoves.push_back(make_pair(l1, l2 - i));
+					}
 					++rotos;
 					break;
 				}
 				if (temp.type != EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first, loc.second - i));
+					if (temp.type == KING)
+					{
+						board[l1][l2].givingCheck = true;
+						for (int j = 1; j < 8; j++)
+						{
+							if (board[l1][l2 - j].type == KING)
+							{
+								break;
+							}
+							board[l1][l2].pathForCheck.push_back(make_pair(l1, l2 - j));
+						}
+					}
+					possibleMoves.push_back(make_pair(l1, l2 - i));
 					++rotos;
 					break;
 				}
 				if (temp.type == EMPTY)
 				{
-					possibleMoves.push_back(make_pair(loc.first, loc.second - i));
+					possibleMoves.push_back(make_pair(l1, l2 - i));
 				}
 			}
 			break;
@@ -568,18 +888,18 @@ void Rook::pieceVision(vector<vector<Piece>>board) {
 class Queen : public Piece {
 public:
 	bool captured = false;
-	bool givingCheck = false;
+	
 	
 	Queen(Color c, string loc) : Piece(QUEEN, c, loc[0], loc[1] - '0') {}
 	Queen() : Piece(QUEEN, NULL_COLOR, 'a', 1) {}
-	void pieceVision(vector<vector<Piece>> board);
+	void pieceVision(vector<vector<Piece>> &board, bool morv);
 };
 
-void Queen::pieceVision(vector<vector<Piece>> board) {
+void Queen::pieceVision(vector<vector<Piece>> &board, bool morv) {
 	Bishop b(color, location.first, location.second);
 	Rook r(color, location.first, location.second);
-	b.pieceVision(board);
-	r.pieceVision(board);
+	b.pieceVision(board, morv);
+	r.pieceVision(board, morv);
 	possibleMoves.insert(possibleMoves.end(), b.possibleMoves.begin(), b.possibleMoves.end());
 	possibleMoves.insert(possibleMoves.end(), r.possibleMoves.begin(), r.possibleMoves.end());
 	return;
@@ -593,91 +913,165 @@ public:
 	
 	King(Color c, string loc) : Piece(KING, c, loc[0], loc[1] - '0') {}
 	King() : Piece(KING, NULL_COLOR, 'a', 1) {}
-	void pieceVision(vector<vector<Piece>> board);
+	void pieceVision(vector<vector<Piece>> &board, bool morv, vector<pair<int, int>> oppoVision);
 };
 
-void King::pieceVision(vector<vector<Piece>> board) {
+void King::pieceVision(vector<vector<Piece>> &board, bool morv, vector<pair<int, int>> oppoVision) {
 	pair<int, int> loc = rftcd(location);
-	for (size_t i = 0; i < 8; i++)
+	int l1 = loc.first;
+	int l2 = loc.second;
+	for (int i = 0; i < 8; i++)
 	{
 		switch (i) {
 		case 0:
 			//N
-			if (loc.first <= 6)
+			if (l1 <= 6)
 			{
-				if (board[loc.first + 1][loc.second].color != color)
+				if (morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first + 1, loc.second));
+					possibleMoves.push_back(make_pair(l1 + 1, l2));
+					if (board[l1 + 1][l2].color == color)
+					{
+						board[l1 + 1][l2].isProtected = true;
+					}
+					break;
+				}
+				if (find(oppoVision.begin(), oppoVision.end(), make_pair(l1 + 1, l2)) == oppoVision.end() && board[l1 + 1][l2].color != color)
+				{
+					possibleMoves.push_back(make_pair(l1 + 1, l2));
 				}
 			}
 			break;
 		case 1:
 			//NE
-			if (loc.first <= 6 && loc.second <= 6)
+			if (l1 <= 6 && l2 <= 6)
 			{
-				if (board[loc.first + 1][loc.second + 1].color != color)
+				if (morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first + 1, loc.second + 1));
+					possibleMoves.push_back(make_pair(l1 + 1, l2 + 1));
+					if (board[l1 + 1][l2 + 1].color == color)
+					{
+						board[l1 + 1][l2 + 1].isProtected = true;
+					}
+					break;
+				}
+				if (find(oppoVision.begin(), oppoVision.end(), make_pair(l1 + 1, l2 + 1)) == oppoVision.end() && board[l1 + 1][l2 + 1].color != color)
+				{
+					possibleMoves.push_back(make_pair(l1 + 1, l2 + 1));
 				}
 			}
 			break;
 		case 2:
 			//E
-			if (loc.second <= 6)
+			if (l2 <= 6)
 			{
-				if (board[loc.first][loc.second + 1].color != color)
+				if (morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first, loc.second + 1));
+					possibleMoves.push_back(make_pair(l1, l2 + 1));
+					if (board[l1][l2 + 1].color == color)
+					{
+						board[l1][l2 + 1].isProtected = true;
+					}
+					break;
+				}
+				if (find(oppoVision.begin(), oppoVision.end(), make_pair(l1, l2 + 1)) == oppoVision.end() && board[l1][l2 + 1].color != color)
+				{
+					possibleMoves.push_back(make_pair(l1, l2 + 1));
 				}
 			}
 			break;
 		case 3:
 			//SE
-			if (loc.first >= 1 && loc.second <= 6)
+			if (l1 >= 1 && l2 <= 6)
 			{
-				if (board[loc.first - 1][loc.second + 1].color != color)
+				if (morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first - 1, loc.second + 1));
+					possibleMoves.push_back(make_pair(l1 - 1, l2 + 1));
+					if (board[l1 - 1][l2 + 1].color == color)
+					{
+						board[l1 - 1][l2 + 1].isProtected = true;
+					}
+					break;
+				}
+				if (find(oppoVision.begin(), oppoVision.end(), make_pair(l1 - 1, l2 + 1)) == oppoVision.end() && board[l1 - 1][l2 + 1].color != color)
+				{
+					possibleMoves.push_back(make_pair(l1 - 1, l2 + 1));
 				}
 			}
 			break;
 		case 4:
 			//S
-			if (loc.first >= 1)
+			if (l1 >= 1)
 			{
-				if (board[loc.first - 1][loc.second].color != color)
+				if (morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first - 1, loc.second));
+					possibleMoves.push_back(make_pair(l1 - 1, l2));
+					if (board[l1 - 1][l2].color == color)
+					{
+						board[l1 - 1][l2].isProtected = true;
+					}
+					break;
+				}
+				if (find(oppoVision.begin(), oppoVision.end(), make_pair(l1 - 1, l2)) == oppoVision.end() && board[l1 - 1][l2].color != color)
+				{
+					possibleMoves.push_back(make_pair(l1 - 1, l2));
 				}
 			}
 			break;
 		case 5:
 			//SW
-			if (loc.first >= 1 && loc.second >= 1)
+			if (l1 >= 1 && l2 >= 1)
 			{
-				if (board[loc.first - 1][loc.second - 1].color != color)
+				if (morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first - 1, loc.second - 1));
+					possibleMoves.push_back(make_pair(l1 - 1, l2 - 1));
+					if (board[l1 - 1][l2 - 1].color == color)
+					{
+						board[l1 - 1][l2 - 1].isProtected = true;
+					}
+					break;
+				}
+				if (find(oppoVision.begin(), oppoVision.end(), make_pair(l1 - 1, l2 - 1)) == oppoVision.end() && board[l1 - 1][l2 - 1].color != color)
+				{
+					possibleMoves.push_back(make_pair(l1 - 1, l2 - 1));
 				}
 			}
 			break;
 		case 6:
 			//W
-			if (loc.second >= 1)
+			if (l2 >= 1)
 			{
-				if (board[loc.first][loc.second - 1].color != color)
+				if (morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first, loc.second - 1));
+					possibleMoves.push_back(make_pair(l1, l2 - 1));
+					if (board[l1][l2 - 1].color == color)
+					{
+						board[l1][l2 - 1].isProtected = true;
+					}
+					break;
+				}
+				if (find(oppoVision.begin(), oppoVision.end(), make_pair(l1, l2 - 1)) == oppoVision.end() && board[l1][l2 - 1].color != color)
+				{
+					possibleMoves.push_back(make_pair(l1, l2 - 1));
 				}
 			}
 			break;
 		case 7:
 			//NW
-			if (loc.first <= 6 && loc.second >= 1)
+			if (l1 <= 6 && l2 >= 1)
 			{
-				if (board[loc.first + 1][loc.second - 1].color != color)
+				if (morv == false)
 				{
-					possibleMoves.push_back(make_pair(loc.first + 1, loc.second - 1));
+					possibleMoves.push_back(make_pair(l1 + 1, l2 - 1));
+					if (board[l1 + 1][l2 - 1].color == color)
+					{
+						board[l1 + 1][l2 - 1].isProtected = true;
+					}
+					break;
+				}
+				if (find(oppoVision.begin(), oppoVision.end(), make_pair(l1 + 1, l2 - 1)) == oppoVision.end() && board[l1 + 1][l2 - 1].color != color)
+				{
+					possibleMoves.push_back(make_pair(l1 + 1, l2 - 1));
 				}
 			}
 			break;
@@ -687,13 +1081,4 @@ void King::pieceVision(vector<vector<Piece>> board) {
 }
 
 
-
-class Player {
-public:
-	string name;
-	Color color;
-	bool inCheck = false;
-	Player(string n, Color c) : name(n), color(c) {}
-	Player() : name(""), color(NULL_COLOR) {}
-};
 

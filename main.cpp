@@ -13,7 +13,11 @@
 
 using namespace std;
 
+
+
+
 int main() {
+	// Initialize the random number generator
 	Player p1("White", WHITE);
 	Player p2("Black", BLACK);
 	Game game(p1, p2);
@@ -21,49 +25,86 @@ int main() {
 	int move = 1; // 0 for white, 1 for black
 	bool gameOver = false;
 	while (gameOver == false) {
-		cout << endl << endl << "Move " << move << ": ";
-		cout << "White's turn. If you would like to resign, enter 'resign'. Else, enter your move." << endl;
-		game.boardVision(WHITE);
-		bool wCastle = false;
-		string moveW;
-		cin >> moveW;
-		if (moveW == "resign")
+		vector<int> moveCoords;
+		if (p1.turn)
 		{
-			gameOver = true;
-			cout << "White has resigned. Black wins!" << endl;
-			break;
+			cout << "Move " << move << ": ";
+			bool wCastle = false;
+			game.boardVision(WHITE);
+			p1.oppoVision.clear();
+			p1.oppoVision = game.oppositionVision(BLACK);
+			p1.inCheck = game.checkChecker(BLACK);
+			if (p1.inCheck)
+			{
+				vector<vector<int>> mate = game.legalMovesinCheck(WHITE, p1.oppoVision);
+				if (mate.size() == 0)
+				{
+					cout << "White is checkmated! Game Over." << endl;
+					gameOver = true;
+					break;
+				}
+				cout << "White is in check!" << endl;
+			}
+			cout << "White's turn. If you would like to resign, enter 'resign'. Else, enter your move." << endl;
+			string moveW;
+			cin >> moveW;
+			if (moveW == "resign")
+			{
+				gameOver = true;
+				cout << "White has resigned. Black wins!" << endl;
+				break;
+			}
+			moveCoords = game.notationToMove(WHITE, moveW, p1.inCheck, p1.oppoVision);
+			if (moveCoords.size() != 4 && moveCoords.size() != 1)
+			{
+				cout << "Invalid move. Please try again." << endl;
+				continue;
+			}
+			game.movePiece(moveCoords);
+			p2.turn = true;
+			p1.turn = false;
+			moveCoords.clear();
+			cout << "White moved." << endl << endl << endl;
 		}
-		vector<int> moveCoords = game.notationToMove(WHITE, moveW);
-		if (moveCoords.size() != 4 && moveCoords.size() != 1)
-		{
-			cout << "Invalid move. Please try again." << endl;
-			continue;
+		if (p2.turn) {
+			bool bCastle = false;
+			game.boardVision(BLACK);
+			p2.oppoVision.clear();
+			p2.oppoVision = game.oppositionVision(WHITE);
+			p2.inCheck = game.checkChecker(WHITE);
+			if (p2.inCheck)
+			{
+				vector<vector<int>> mate = game.legalMovesinCheck(BLACK, p2.oppoVision);
+				if (mate.size() == 0)
+				{
+					cout << "Black is checkmated! Game Over." << endl;
+					gameOver = true;
+					break;
+				}
+				cout << "Black is in check!" << endl;
+			}
+			cout << "Black's turn. If you would like to resign, enter 'resign'. Else, enter your move." << endl;
+			string moveB;
+			cin >> moveB;
+			if (moveB == "resign")
+			{
+				gameOver = true;
+				cout << "Black has resigned. White wins!" << endl;
+				break;
+			}
+			moveCoords = game.notationToMove(BLACK, moveB, p2.inCheck, p2.oppoVision);
+			if (moveCoords.size() != 4 && moveCoords.size() != 1)
+			{
+				cout << "Invalid move. Please try again." << endl;
+				continue;
+			}
+			game.movePiece(moveCoords);
+			p1.turn = true;
+			p2.turn = false;
+			moveCoords.clear();
+			cout << "Black moved." << endl << endl << endl;
+			move++;
 		}
-		game.movePiece(moveCoords);
-		moveCoords.clear();
-		
-		cout << "White moved." << endl << endl << endl;
-		cout << "Black's turn. If you would like to resign, enter 'resign'. Else, enter your move." << endl;
-		game.boardVision(BLACK);
-		bool bCastle = false;
-		string moveB;
-		cin >> moveB;
-		if (moveB == "resign")
-		{
-			gameOver = true;
-			cout << "Black has resigned. White wins!" << endl;
-			break;
-		}
-		moveCoords = game.notationToMove(BLACK, moveB);
-		if (moveCoords.size() != 4 && moveCoords.size() != 1)
-		{
-			cout << "Invalid move. Please try again." << endl;
-			continue;
-		}
-		cout << "Black moved." << endl;
-		game.movePiece(moveCoords);
-		moveCoords.clear();
-		move++;
 	}
 	return 0;
 }
@@ -73,13 +114,8 @@ int main() {
 /*
 TO-DO:
 DO I NEED A MOVE CLASS?
-- Current Weird Behavior:
-	- Bishop moved to wrong square gives error instead of second chance
-	- 
-- Add check and checkmate detection
-	- opposition TOTAL piece vision vector
-	- checkPath vector compared with personal piece vision vector
-	- see if checker is capturable
+
+
 - Add pawn promotion
 	- If pawn reaches the end of the board, prompt for promotion
 	- Change pawn type to queen, rook, bishop, or knight
@@ -116,3 +152,6 @@ DO I NEED A MOVE CLASS?
 	- Add notation for any given game
 		- prompt for notation before each move
 */
+
+
+
