@@ -1,15 +1,4 @@
 #pragma once
-#include <cstdlib>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <sstream>
-#include <algorithm>
-#include <iomanip>
-#include <map>
-#include <random>
-#include <ctime>
-#include <windows.h> 
 #include "pieces.h"
 
 using namespace std;
@@ -36,17 +25,6 @@ public:
 	}
 	Player() : name(""), color(NULL_COLOR) {}
 };
-
-
-
-bool isLightSquare(int tot) {
-	if ((tot) % 2 == 0)
-	{
-		return false;
-	}
-	else return true;
-}
-
 
 class Game {
 public:
@@ -101,7 +79,6 @@ public:
 		}
 	}
 
-
 	Game(Player player1, Player player2) {
 		player1.color = WHITE;
 		player2.color = BLACK;
@@ -124,8 +101,8 @@ public:
 
 	vector<pair<int, int>> oppositionVision(Color c);
 	bool checkChecker(Color oppo);
-	pair<int, int> findChecker();
 	vector<vector<int>> legalMovesinCheck(Color c, vector<pair<int, int>> oppoVision);
+	pair<int, int> findChecker();
 
 	vector<int> findMovingPawn(Color c, pair<int, int> endloc, int correct);
 	vector<int> findMovingBishop(Color c, pair<int, int> endloc);
@@ -134,7 +111,7 @@ public:
 	vector<int> findMovingQueen(Color c, pair<int, int> endloc);
 	vector<int> findMovingKing(Color c, pair<int, int> endloc);
 
-	vector<int> notationToMove(Color color, string notation, bool inCheck, vector<pair<int, int>> oppoVision);
+	vector<int> notationToMove(Color color, string notation, bool inCheck, vector<vector<int>> legalMoves);
 	void movePiece(vector<int> move);
 };
 
@@ -479,7 +456,6 @@ vector<int> Game::findMovingPawn(Color c, pair<int, int> endloc, int correct) {
 		{
 			if (board[i][j].type == PAWN && board[i][j].color == c)
 			{
-
 				Pawn temp;
 				temp.location = board[i][j].location;
 				temp.color = board[i][j].color;
@@ -656,11 +632,9 @@ vector<int> Game::findMovingKing(Color c, pair<int, int> endloc) {
 	return move; // Return empty vector if no moving king found
 }
 
-vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<pair<int, int>> oppoVision) {
-	vector<vector<int>> legalMoves;
+vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<vector<int>> legalMoves) {
 	if (inCheck)
 	{
-		legalMoves = legalMovesinCheck(c, oppoVision);
 		if (legalMoves.size() == 0)
 		{
 			cout << "Checkmate! No legal moves available." << endl;
@@ -706,7 +680,8 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 			{
 				cout << "That's an illegal move, as you're still in check! try again." << endl;
 				move.clear();
-				move.push_back(5); // Push a single element to indicate an illegal move
+				move.push_back(5);
+				move.push_back(6);
 			}
 			pair<int, int> checker = findChecker();
 			board[checker.first][checker.second].givingCheck = false;
@@ -724,7 +699,8 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 			{
 				cout << "That's an illegal move, as you're still in check! try again." << endl;
 				move.clear();
-				move.push_back(5); // Push a single element to indicate an illegal move
+				move.push_back(5); 
+				move.push_back(6);
 			}
 			pair<int, int> checker = findChecker();
 			board[checker.first][checker.second].givingCheck = false;
@@ -743,7 +719,8 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 			{
 				cout << "That's an illegal move, as you're still in check! try again." << endl;
 				move.clear();
-				move.push_back(5); // Push a single element to indicate an illegal move
+				move.push_back(5);
+				move.push_back(6);
 			}
 			pair<int, int> checker = findChecker();
 			board[checker.first][checker.second].givingCheck = false;
@@ -762,7 +739,8 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 			{
 				cout << "That's an illegal move, as you're still in check! try again." << endl;
 				move.clear();
-				move.push_back(5); // Push a single element to indicate an illegal move
+				move.push_back(5);
+				move.push_back(6);
 			}
 			pair<int, int> checker = findChecker();
 			board[checker.first][checker.second].givingCheck = false;
@@ -781,7 +759,8 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 			{
 				cout << "That's an illegal move, as you're still in check! try again." << endl;
 				move.clear();
-				move.push_back(5); // Push a single element to indicate an illegal move
+				move.push_back(5);
+				move.push_back(6);
 			}
 			pair<int, int> checker = findChecker();
 			board[checker.first][checker.second].givingCheck = false;
@@ -800,7 +779,8 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 			{
 				cout << "That's an illegal move, as you're still in check! try again." << endl;
 				move.clear();
-				move.push_back(5); // Push a single element to indicate an illegal move
+				move.push_back(5);
+				move.push_back(6);
 			}
 			pair<int, int> checker = findChecker();
 			board[checker.first][checker.second].givingCheck = false;
@@ -825,8 +805,38 @@ void Game::movePiece(vector<int> move) {
 		cout << "Invalid move: out of bounds." << endl;
 		return;
 	}
-	board[toLoc.first][toLoc.second] = board[fromLoc.first][fromLoc.second];
-	board[toLoc.first][toLoc.second].hasMoved = true; // Mark the piece as moved
+	if (board[fromLoc.first][fromLoc.second].type == PAWN && (toLoc.first == 0 || toLoc.first == 7))
+	{
+		cout << "Pawn promotion! Choose a piece to promote to (Q, R, B, N): ";
+		string promotionChoice;
+		cin >> promotionChoice;
+		switch (promotionChoice[0])
+		{
+		case 'Q':
+			board[toLoc.first][toLoc.second] = Piece(QUEEN, board[fromLoc.first][fromLoc.second].color, toLoc.second + 'a', toLoc.first);
+			board[toLoc.first][toLoc.second].hasMoved = true; // Mark the piece as moved
+			break;
+		case 'R':
+			board[toLoc.first][toLoc.second] = Piece(ROOK, board[fromLoc.first][fromLoc.second].color, toLoc.second + 'a', toLoc.first);
+			board[toLoc.first][toLoc.second].hasMoved = true; // Mark the piece as moved
+			break;
+		case 'B':
+			board[toLoc.first][toLoc.second] = Bishop(board[fromLoc.first][fromLoc.second].color, toLoc.second + 'a', toLoc.first);
+			board[toLoc.first][toLoc.second].hasMoved = true; // Mark the piece as moved
+			break;
+		case 'N':
+			board[toLoc.first][toLoc.second] = Knight(board[fromLoc.first][fromLoc.second].color, toLoc.second + 'a', toLoc.first);
+			board[toLoc.first][toLoc.second].hasMoved = true; // Mark the piece as moved
+			break;
+
+		default:
+			break;
+		}
+	}
+	else {
+		board[toLoc.first][toLoc.second] = board[fromLoc.first][fromLoc.second];
+		board[toLoc.first][toLoc.second].hasMoved = true; // Mark the piece as moved
+	}
 	board[fromLoc.first][fromLoc.second] = Piece(EMPTY, NULL_COLOR, fromLoc.second + 'a', fromLoc.first); // Clear previous position
 	return;
 }

@@ -1,20 +1,6 @@
-﻿#include <cstdlib>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <sstream>
-#include <algorithm>
-#include <iomanip>
-#include <map>
-#include <random>
-#include <ctime>
-#include <windows.h> 
-#include "game.h"
+﻿#include "game.h"
 
 using namespace std;
-
-
-
 
 int main() {
 	// Initialize the random number generator
@@ -34,10 +20,11 @@ int main() {
 			p1.oppoVision.clear();
 			p1.oppoVision = game.oppositionVision(BLACK);
 			p1.inCheck = game.checkChecker(BLACK);
+			vector<vector<int>> mateW;
 			if (p1.inCheck)
 			{
-				vector<vector<int>> mate = game.legalMovesinCheck(WHITE, p1.oppoVision);
-				if (mate.size() == 0)
+				vector<vector<int>> mateW = game.legalMovesinCheck(WHITE, p1.oppoVision);
+				if (mateW.size() == 0)
 				{
 					cout << "White is checkmated! Game Over." << endl;
 					gameOver = true;
@@ -54,9 +41,13 @@ int main() {
 				cout << "White has resigned. Black wins!" << endl;
 				break;
 			}
-			moveCoords = game.notationToMove(WHITE, moveW, p1.inCheck, p1.oppoVision);
+			moveCoords = game.notationToMove(WHITE, moveW, p1.inCheck, mateW);
 			if (moveCoords.size() != 4 && moveCoords.size() != 1)
 			{
+				if (moveCoords.size() == 2)
+				{
+					continue;
+				}
 				cout << "Invalid move. Please try again." << endl;
 				continue;
 			}
@@ -72,10 +63,11 @@ int main() {
 			p2.oppoVision.clear();
 			p2.oppoVision = game.oppositionVision(WHITE);
 			p2.inCheck = game.checkChecker(WHITE);
+			vector<vector<int>> mateB;
 			if (p2.inCheck)
 			{
-				vector<vector<int>> mate = game.legalMovesinCheck(BLACK, p2.oppoVision);
-				if (mate.size() == 0)
+				mateB = game.legalMovesinCheck(BLACK, p2.oppoVision);
+				if (mateB.size() == 0)
 				{
 					cout << "Black is checkmated! Game Over." << endl;
 					gameOver = true;
@@ -92,9 +84,13 @@ int main() {
 				cout << "Black has resigned. White wins!" << endl;
 				break;
 			}
-			moveCoords = game.notationToMove(BLACK, moveB, p2.inCheck, p2.oppoVision);
+			moveCoords = game.notationToMove(BLACK, moveB, p2.inCheck, mateB);
 			if (moveCoords.size() != 4 && moveCoords.size() != 1)
 			{
+				if (moveCoords.size() == 2)
+				{
+					continue;
+				}
 				cout << "Invalid move. Please try again." << endl;
 				continue;
 			}
@@ -113,12 +109,7 @@ int main() {
 
 /*
 TO-DO:
-DO I NEED A MOVE CLASS?
 
-
-- Add pawn promotion
-	- If pawn reaches the end of the board, prompt for promotion
-	- Change pawn type to queen, rook, bishop, or knight
 - Add en passant
 	- justMovedPawn2Squares checker
 	- check adjacency of pawn to justMovedPawn2Squares

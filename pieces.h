@@ -1,5 +1,4 @@
 #pragma once
-
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -13,9 +12,6 @@
 #include <windows.h> 
 
 using namespace std;
-
-
-
 
 string coordToString(pair<int, int> loc) {
 	char c1 = 'a' + (loc.second); // Convert column index to file
@@ -38,8 +34,13 @@ pair<int, int> rftcd(pair<char, int> loc) {
 	return make_pair(loc.second - 1, loc.first - 'a');
 }
 
-
-
+bool isLightSquare(int tot) {
+	if ((tot) % 2 == 0)
+	{
+		return false;
+	}
+	else return true;
+}
 
 enum Color {
 	NULL_COLOR,
@@ -521,7 +522,7 @@ public:
 	bool captured = false;
 	
 	
-	Knight(Color c, string loc) : Piece(KNIGHT, c, loc[0], loc[1] - '0') {}
+	Knight(Color c, char f, int r) : Piece(KNIGHT, c, f, r) {}
 	Knight() : Piece(KNIGHT, NULL_COLOR, 'a', 1) {}
 	void pieceVision(vector<vector<Piece>> &board, bool morv);
 };
