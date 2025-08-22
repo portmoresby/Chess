@@ -97,7 +97,8 @@ public:
 		}
 	}
 	void boardVision(Color c);
-	void conductCastle(Color c, string longshort);
+	bool castleSafe(Color c, string longshort, vector<pair<int, int>> oppoVision);
+	vector<int> conductCastle(Color c, string longshort, vector<pair<int, int>> oppoVision);
 
 	vector<pair<int, int>> oppositionVision(Color c);
 	bool checkChecker(Color oppo);
@@ -105,13 +106,13 @@ public:
 	pair<int, int> findChecker();
 
 	vector<int> findMovingPawn(Color c, pair<int, int> endloc, int correct);
-	vector<int> findMovingBishop(Color c, pair<int, int> endloc);
-	vector<int> findMovingKnight(Color c, pair<int, int> endloc);
-	vector<int> findMovingRook(Color c, pair<int, int> endloc);
-	vector<int> findMovingQueen(Color c, pair<int, int> endloc);
+	vector<int> findMovingBishop(Color c, pair<int, int> endloc, string fromCoord);
+	vector<int> findMovingKnight(Color c, pair<int, int> endloc, string fromCoord);
+	vector<int> findMovingRook(Color c, pair<int, int> endloc, string fromCoord);
+	vector<int> findMovingQueen(Color c, pair<int, int> endloc, string fromCoord);
 	vector<int> findMovingKing(Color c, pair<int, int> endloc);
 
-	vector<int> notationToMove(Color color, string notation, bool inCheck, vector<vector<int>> legalMoves);
+	vector<int> notationToMove(Color color, string notation, bool inCheck, vector<vector<int>> legalMoves, vector<pair<int, int>> oppoVision);
 	void movePiece(vector<int> move);
 };
 
@@ -199,7 +200,65 @@ void Game::boardVision(Color c) {
 	}
 }
 
-void Game::conductCastle(Color c, string longshort) {
+bool Game::castleSafe(Color c, string longshort, vector<pair<int, int>> oppoVision) {
+	if (longshort == "O-O-O")
+	{
+		if (c == BLACK)
+		{
+			for (auto s : oppoVision)
+			{
+				if (s == make_pair(7, 2) || s == make_pair(7,3))
+				{
+					return false;
+				}
+			}
+		}
+		if (c == WHITE)
+		{
+			for (auto s : oppoVision)
+			{
+				if (s == make_pair(0,2) || s == make_pair(0,3))
+				{
+					return false;
+				}
+			}
+		}
+	}
+	if (longshort == "O-O")
+	{
+		if (c == BLACK)
+		{
+			for (auto s : oppoVision)
+			{
+				if (s == make_pair(7, 6) || s == make_pair(7, 5))
+				{
+					return false;
+				}
+			}
+		}
+		if (c == WHITE)
+		{
+			for (auto s : oppoVision)
+			{
+				if (s == make_pair(0, 6) || s == make_pair(0, 5))
+				{
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+}
+
+vector<int> Game::conductCastle(Color c, string longshort, vector<pair<int, int>> oppoVision) {
+	vector<int> legal = { 5 };
+	bool safe = castleSafe(c, longshort, oppoVision);
+	if (safe == false)
+	{
+		cout << "You cannot castle through check!" << endl;
+		legal.clear();
+		return legal; // Return empty vector if not safe
+	}
 	if (longshort == "O-O-O")
 	{
 		if (c == BLACK)
@@ -234,7 +293,7 @@ void Game::conductCastle(Color c, string longshort) {
 			board[0][7] = Piece(EMPTY, NULL_COLOR, 'h', 8); // Remove the rook from h8
 		}
 	}
-	return;
+	return legal;
 }
 
 vector<pair<int, int>> Game::oppositionVision(Color oppo) {
@@ -419,27 +478,28 @@ vector<vector<int>> Game::legalMovesinCheck(Color c, vector<pair<int, int>> oppo
 	for (auto square : squaresTo)
 	{
 		vector<int> move;
+		string filler =  ""; // No piece delineation for pawns
 		move = findMovingPawn(c, square, 20);
 		if (!move.empty())
 		{
 			legalMoves.push_back(move);
 		}
-		move = findMovingBishop(c, square);
+		move = findMovingBishop(c, square, filler);
 		if (!move.empty())
 		{
 			legalMoves.push_back(move);
 		}
-		move = findMovingKnight(c, square);
+		move = findMovingKnight(c, square, filler);
 		if (!move.empty())
 		{
 			legalMoves.push_back(move);
 		}
-		move = findMovingRook(c, square);
+		move = findMovingRook(c, square, filler);
 		if (!move.empty())
 		{
 			legalMoves.push_back(move);
 		}
-		move = findMovingQueen(c, square);
+		move = findMovingQueen(c, square, filler);
 		if (!move.empty())
 		{
 			legalMoves.push_back(move);
@@ -482,12 +542,45 @@ vector<int> Game::findMovingPawn(Color c, pair<int, int> endloc, int correct) {
 	return move; // Return empty vector if no moving pawn found
 }
 
-vector<int> Game::findMovingBishop(Color c, pair<int, int> endloc) {
+vector<int> Game::findMovingBishop(Color c, pair<int, int> endloc, string fromCoord) {
 	vector<int> move;
+	pair<int, int> fromDelin = { -1, -1 };
+	if (fromCoord.size() == 0)
+	{
+		fromDelin.first = 10;
+		fromDelin.second = 10;
+	}
+	if (fromCoord.size() == 2)
+	{
+		fromDelin = rftcd(parLoc(fromCoord));
+		move.push_back(fromDelin.first);
+		move.push_back(fromDelin.second);
+		move.push_back(endloc.first);
+		move.push_back(endloc.second);
+		return move;
+	}
+	if (fromCoord.size() == 1)
+	{
+		if (isdigit(fromCoord[0]))
+		{
+			fromDelin.first = fromCoord[0] - '0' - 1;
+		}
+		else {
+			fromDelin.second = fromCoord[0] - 'a';
+		}
+	}
 	for (int i = 0; i < 8; i++)
 	{
+		if (fromDelin.second == -1 && fromDelin.first != i)
+		{
+			continue;
+		}
 		for (int j = 0; j < 8; j++)
 		{
+			if (fromDelin.first == -1 && fromDelin.second != j)
+			{
+				continue;
+			}
 			if (board[i][j].type == BISHOP && board[i][j].color == c)
 			{
 				Bishop temp;
@@ -512,12 +605,45 @@ vector<int> Game::findMovingBishop(Color c, pair<int, int> endloc) {
 	return move; // Return empty vector if no moving bishop found
 }
 
-vector<int> Game::findMovingKnight(Color c, pair<int, int> endloc) {
+vector<int> Game::findMovingKnight(Color c, pair<int, int> endloc, string fromCoord) {
 	vector<int> move;
+	pair<int, int> fromDelin = { -1, -1 };
+	if (fromCoord.size() == 0)
+	{
+		fromDelin.first = 10;
+		fromDelin.second = 10;
+	}
+	if (fromCoord.size() == 2)
+	{
+		fromDelin = rftcd(parLoc(fromCoord));
+		move.push_back(fromDelin.first);
+		move.push_back(fromDelin.second);
+		move.push_back(endloc.first);
+		move.push_back(endloc.second);
+		return move;
+	}
+	if (fromCoord.size() == 1)
+	{
+		if (isdigit(fromCoord[0]))
+		{
+			fromDelin.first = fromCoord[0] - '0' - 1;
+		}
+		else {
+			fromDelin.second = fromCoord[0] - 'a';
+		}
+	}
 	for (int i = 0; i < 8; i++)
 	{
+		if (fromDelin.second == -1 && fromDelin.first != i)
+		{
+			continue;
+		}
 		for (int j = 0; j < 8; j++)
 		{
+			if (fromDelin.first == -1 && fromDelin.second != j)
+			{
+				continue;
+			}
 			if (board[i][j].type == KNIGHT && board[i][j].color == c)
 			{
 				Knight temp;
@@ -542,12 +668,45 @@ vector<int> Game::findMovingKnight(Color c, pair<int, int> endloc) {
 	return move; // Return empty vector if no moving knight found
 }
 
-vector<int> Game::findMovingRook(Color c, pair<int, int> endloc) {
+vector<int> Game::findMovingRook(Color c, pair<int, int> endloc, string fromCoord) {
 	vector<int> move;
+	pair<int, int> fromDelin = { -1, -1 };
+	if (fromCoord.size() == 0)
+	{
+		fromDelin.first = 10;
+		fromDelin.second = 10;
+	}
+	if (fromCoord.size() == 2)
+	{
+		fromDelin = rftcd(parLoc(fromCoord));
+		move.push_back(fromDelin.first);
+		move.push_back(fromDelin.second);
+		move.push_back(endloc.first);
+		move.push_back(endloc.second);
+		return move;
+	}
+	if (fromCoord.size() == 1)
+	{
+		if (isdigit(fromCoord[0]))
+		{
+			fromDelin.first = fromCoord[0] - '0' - 1;
+		}
+		else {
+			fromDelin.second = fromCoord[0] - 'a';
+		}
+	}
 	for (int i = 0; i < 8; i++)
 	{
+		if (fromDelin.second == -1 && fromDelin.first != i)
+		{
+			continue;
+		}
 		for (int j = 0; j < 8; j++)
 		{
+			if (fromDelin.first == -1 && fromDelin.second != j)
+			{
+				continue;
+			}
 			if (board[i][j].type == ROOK && board[i][j].color == c)
 			{
 				Rook temp;
@@ -572,12 +731,45 @@ vector<int> Game::findMovingRook(Color c, pair<int, int> endloc) {
 	return move; // Return empty vector if no moving rook found
 }
 
-vector<int> Game::findMovingQueen(Color c, pair<int, int> endloc) {
+vector<int> Game::findMovingQueen(Color c, pair<int, int> endloc, string fromCoord) {
 	vector<int> move;
+	pair<int, int> fromDelin = { -1, -1 };
+	if (fromCoord.size() == 0)
+	{
+		fromDelin.first = 10;
+		fromDelin.second = 10;
+	}
+	if (fromCoord.size() == 2)
+	{
+		fromDelin = rftcd(parLoc(fromCoord));
+		move.push_back(fromDelin.first);
+		move.push_back(fromDelin.second);
+		move.push_back(endloc.first);
+		move.push_back(endloc.second);
+		return move;
+	}
+	if (fromCoord.size() == 1)
+	{
+		if (isdigit(fromCoord[0]))
+		{
+			fromDelin.first = fromCoord[0] - '0' - 1;
+		}
+		else {
+			fromDelin.second = fromCoord[0] - 'a';
+		}
+	}
 	for (int i = 0; i < 8; i++)
 	{
+		if (fromDelin.second == -1 && fromDelin.first != i)
+		{
+			continue;
+		}
 		for (int j = 0; j < 8; j++)
 		{
+			if (fromDelin.first == -1 && fromDelin.second != j)
+			{
+				continue;
+			}
 			if (board[i][j].type == QUEEN && board[i][j].color == c)
 			{
 				Queen temp;
@@ -632,7 +824,7 @@ vector<int> Game::findMovingKing(Color c, pair<int, int> endloc) {
 	return move; // Return empty vector if no moving king found
 }
 
-vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<vector<int>> legalMoves) {
+vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<vector<int>> legalMoves, vector<pair<int, int>> oppoVision) {
 	if (inCheck)
 	{
 		if (legalMoves.size() == 0)
@@ -648,18 +840,26 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 	}
 	if (notation == "O-O" || notation == "O-O-O")
 	{
-		conductCastle(c, notation);
-		vector<int> curr = { 5 };
+		vector<int> curr = conductCastle(c, notation, oppoVision);
 		return curr; // Return one element vector for castling
 	}
 	vector<int> move;
 	int correct = 20;
 	Piece mover;
+	string fromCoord = "";
 	int s = notation.size();
 	if (s == 2) mover.type = PAWN;
 	else if (s >= 3)
 	{
 		mover.type = chartoPieceType(notation[0]);
+	}
+	if (s >= 4 && notation[1] != 'x')
+	{
+		fromCoord.push_back(notation[1]);
+	}
+	if (s == 5 && notation[2] != 'x')
+	{
+		fromCoord.push_back(notation[2]);
 	}
 	string endcoord = notation.substr(notation.length() - 2, 2);
 	pair<int, int> endloc = rftcd(parLoc(endcoord));
@@ -688,7 +888,7 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 		}
 		return move;
 	case BISHOP:
-		move = findMovingBishop(c, endloc);
+		move = findMovingBishop(c, endloc, fromCoord);
 		if (move.size() == 0)
 		{
 			cout << "No bishops can move there." << endl;
@@ -708,7 +908,7 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 		return move;
 		break;
 	case KNIGHT:
-		move = findMovingKnight(c, endloc);
+		move = findMovingKnight(c, endloc, fromCoord);
 		if (move.size() == 0)
 		{
 			cout << "No knights can move there." << endl;
@@ -728,7 +928,7 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 		return move;
 		break;
 	case ROOK:
-		move = findMovingRook(c, endloc);
+		move = findMovingRook(c, endloc, fromCoord);
 		if (move.size() == 0)
 		{
 			cout << "No rooks can move there." << endl;
@@ -748,7 +948,7 @@ vector<int> Game::notationToMove(Color c, string notation, bool inCheck, vector<
 		return move;
 		break;
 	case QUEEN:
-		move = findMovingQueen(c, endloc);
+		move = findMovingQueen(c, endloc, fromCoord);
 		if (move.size() == 0)
 		{
 			cout << "No queens can move there." << endl;

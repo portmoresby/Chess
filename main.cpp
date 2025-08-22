@@ -41,7 +41,7 @@ int main() {
 				cout << "White has resigned. Black wins!" << endl;
 				break;
 			}
-			moveCoords = game.notationToMove(WHITE, moveW, p1.inCheck, mateW);
+			moveCoords = game.notationToMove(WHITE, moveW, p1.inCheck, mateW, p1.oppoVision);
 			if (moveCoords.size() != 4 && moveCoords.size() != 1)
 			{
 				if (moveCoords.size() == 2)
@@ -84,7 +84,7 @@ int main() {
 				cout << "Black has resigned. White wins!" << endl;
 				break;
 			}
-			moveCoords = game.notationToMove(BLACK, moveB, p2.inCheck, mateB);
+			moveCoords = game.notationToMove(BLACK, moveB, p2.inCheck, mateB, p2.oppoVision);
 			if (moveCoords.size() != 4 && moveCoords.size() != 1)
 			{
 				if (moveCoords.size() == 2)
@@ -113,23 +113,13 @@ TO-DO:
 - Add en passant
 	- justMovedPawn2Squares checker
 	- check adjacency of pawn to justMovedPawn2Squares
--Add piece delineation
-	- Pawns done
-	- Knights, Bishops, and Queens need rank, file, and both coord checkers
-		- will either be only location[1] or will include location[2]
-	- Rooks need rank or file checkers
-		- will always be location[1]
 - Add draw detection
 	- Stalemate: SEE BELOW
 	- 50 moves without a pawn move or capture
-	- If insufficient material 
-		- Check for all combinations of pieces that can lead to a draw
+	- If insufficient material s of pieces that can lead to a draw
 	- If threefold repetition
-		- Keep track of board states and compare them
-- Add castling checks
-	- Check if rook or king has moved
-	- Check if squares between king and rook are empty
-	- piece vision for opposition pieces != king's path
+		- Keep track of board stat
+		- Check for all combinationes and compare them
 -Add pin detection
 	- Check if piece is pinned by opposition piece
 	- For everything but Knight, Check if piece can move without leaving king in check
